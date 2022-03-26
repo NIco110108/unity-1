@@ -1,0 +1,270 @@
+// Uno stupido movimento basato sul corpo rigido di Dani
+
+utilizzando  il sistema ;
+usando  UnityEngine ;
+
+public  class  PlayerMovement : MonoBehaviour {
+
+    // Assingable
+    pubblico  Trasforma  playerCam ;
+     orientamento pubblico alla trasformazione  ;
+
+    // Altro
+     corpo rigido  privato rb ;
+
+    // Rotazione e sguardo
+     float  privato xRotation ;
+     sensibilità del float  privato = 50 f ;  
+     float  privato sensMultiplier  =  1 f ;
+
+    // Movimento
+     float  pubblico moveSpeed  ​​=  4500 ;
+     float  pubblico maxSpeed  ​​=  20 ;
+     bool  pubblico con messa a terra ;
+     LayerMask pubblico whatIsGround  ;
+
+    public  float  counterMovement  =  0 . 175 segg ;
+     soglia float  privato = 0 . 01f ; _  
+     float  pubblico maxSlopeAngle  =  35 f ;
+
+    // Accovacciati e scivola
+    private  Vector3  crouchScale  =  new  Vector3 ( 1 , 0 . 5 f , 1 );
+     scala del lettore Vector3  privato ;
+     float  pubblico slideForce  =  400 ;
+     float  pubblico slideCounterMovement  =  0 . 2f ; _
+
+    // Saltando
+    private  bool  readyToJump  =  true ;
+     float  privato jumpCooldown  =  0 . 25f ; _
+     float  pubblico jumpForce  =  550 f ;
+
+    // Ingresso
+    fluttuare  x , y ;
+    bool  saltare , correre , accovacciarsi ;
+
+    // Scorrevole
+    privato  Vector3  normalVector  =  Vector3 . su ;
+    privato  Vector3  wallNormalVector ;
+
+    vuoto  Sveglio () {
+        rb  =  GetComponent < Rigidbody >();
+    }
+
+    void  Inizio () {
+        playerScale  =   trasforma . scala locale ;
+        cursore . lockState  =  CursorLockMode . Bloccato ;
+        cursore . visibile  =  falso ;
+    }
+
+
+    private  void  FixedUpdate () {
+        Movimento ();
+    }
+
+     void  privato Aggiorna () {
+        MioIngresso ();
+        Guarda ();
+    }
+
+    /// < riassunto >
+    /// Trova l'input dell'utente. Dovrebbe metterlo nella sua stessa classe, ma sono pigro
+    /// </ riassunto >
+    privato  void  MyInput () {
+        x  =  Ingresso . GetAxisRaw ( " Orizzontale " );
+        y  =  Ingresso . GetAxisRaw ( " Verticale " );
+        salto  =  Ingresso . GetButton ( " Salta " );
+        accovacciato  =  Ingresso . GetKey ( Codice chiave . Controllo sinistro );
+
+        // Accovacciato
+        if ( Input . GetKeyDown ( KeyCode . LeftControl ))
+            StartCrouch ();
+        if ( Input . GetKeyUp ( KeyCode . LeftControl ))
+            Stop Crouch ();
+    }
+
+     void  privato StartCrouch () {
+        trasformare . scala locale  =  scala accovacciata ;
+        trasformare . posizione  =  nuovo  Vettore3 ( trasformare.posizione.x , trasformare.posizione.y - 0.5f , trasformare.posizione.z ) ; _ _ _ _ _ _ _ _ _ _ _ _ _ _  
+        if ( rb . velocità . magnitudine  >  0 . 5 f ) {
+            se ( con messa a terra ) {
+                rb . AddForce ( orientamento.trasformare.avanti * slideForce ) ; _  _  _
+            }
+        }
+    }
+
+    privato  void  StopCrouch () {
+        trasformare . scala locale  =  scala giocatore ;
+        trasformare . posizione  =  nuovo  Vettore3 ( trasforma.posizione.x , trasforma.posizione.y + 0.5f , trasforma.posizione.z ) ; _ _ _ _ _ _ _ _ _ _ _ _ _ _  
+    }
+
+     vuoto  privato Movimento () {
+        // Gravità extra
+        rb . AddForce ( Vector3 . down  *  Time.deltaTime * 10 ) ; _  
+
+        // Trova la velocità effettiva relativa a dove sta guardando il giocatore
+        Vector2  mag  =  FindVelRelativeToLook ();
+        float  xMag  =  mag . x , yMag  =  mag . si ;
+
+        // Contrasta lo scorrimento e il movimento sciatto
+        CounterMovement ( x , y , mag );
+
+        // Se tieni premuto jump && pronto a saltare, salta
+        if ( readyToJump  &&  jumping ) Salta ();
+
+        // Imposta la velocità massima
+        float  maxSpeed  ​​=  questo . velocità massima ;
+
+        // Se scivoli lungo una rampa, aggiungi forza in modo che il giocatore rimanga a terra e aumenti anche la velocità
+        if ( accovacciato  && a  terra  &&  readyToJump ) {
+            rb . AddForce ( Vector3 . down  *  Time.deltaTime * 3000 ) ; _  
+            ritorno ;
+        }
+
+        // Se la velocità è maggiore di velocità massima, annulla l'input in modo da non superare la velocità massima
+        if ( x  >  0  &&  xMag  >  maxSpeed ​​) x  =  0 ;
+        se ( x  <  0  &&  xMag  <  - velocità massima ) x  =  0 ;
+        se ( y  >  0  &&  yMag  >  maxVelocità ) y  =  0 ;
+        se ( y  <  0  &&  yMag  <  - velocità massima ) y  =  0 ;
+
+        // Alcuni moltiplicatori
+         moltiplicatore  float =  1 f , moltiplicatore V  =  1 f ;
+
+        // Movimento nell'aria
+        se ( ! a terra ) {
+            moltiplicatore  =  0 . 5f ; _
+            moltiplicatoreV  =  0 . 5f ; _
+        }
+
+        // Movimento durante lo scorrimento
+        if ( a terra  &&  accovacciato ) moltiplicatoreV  =  0 f ;
+
+        // Applica le forze per muovere il giocatore
+        rb . AddForce ( orientamento.trasformare.avanti * y * moveSpeed * Tempo.deltaTime  *  moltiplicatore * moltiplicatoreV ) ; _ _ _ _ _        
+        rb . AddForce ( orientation . transform .right * x * moveSpeed * Time.deltaTime * moltiplicatore ) ; _ _        
+    }
+
+     vuoto  privato Salta () {
+        if ( con messa a terra  &&  readyToJump ) {
+            readyToJump  =  falso ;
+
+            // Aggiungi le forze di salto
+            rb . AddForce ( Vector2 . su  *  jumpForce  *  1. 5 f ) ;
+            rb . AddForce ( vettore normale  *  jumpForce  *  0 . 5 f );
+
+            // Se si salta mentre si cade, reimposta la velocità y.
+            Vettore3  vel  =  rb . velocità ;
+            if ( rb . velocità . y  <  0 . 5 f )
+                rb . velocità  =  nuovo  Vettore3 ( vel . x , 0 , vel . z );
+            altrimenti  se ( rb . velocità .y  >  0 ) _
+                rb . velocità  =  nuovo  Vettore3 ( vel . x , vel . y  /  2 , vel . z );
+
+            Invoke ( nameof ( ResetJump ), jumpCooldown );
+        }
+    }
+
+     void  privato ResetJump () {
+        readyToJump  =  vero ;
+    }
+
+     float  privato desideratoX ;
+     vuoto  privato Guarda () {
+        float  mouseX  =  Input . GetAxis ( " Mouse X " ) *  sensibilità  *  Tempo . fixedDeltaTime  *  sensMultiplier ;
+        float  mouseY  =  Input . GetAxis ( " Mouse Y " ) *  sensibilità  *  Tempo . fixedDeltaTime  *  sensMultiplier ;
+
+        // Trova la rotazione dell'aspetto corrente
+        Vector3  rot  =  playerCam . trasformare . rotazione locale . eulero Angoli ;
+        desideratoX  =  marciume . y  +  mouseX ;
+
+        // Ruota e assicurati anche di non eseguire una rotazione eccessiva o insufficiente.
+        xRotazione  -=  mouseY ;
+        xRotazione  =  Mathf . Morsetto ( xRotazione , -90 f , 90 f ) ;
+
+        // Esegui le rotazioni
+        playerCam . trasformare . localRotation  =  Quaternione . Eulero ( xRotazione , X desiderata , 0 );
+        orientamento . trasformare . localRotation  =  Quaternione . Eulero ( 0 , X desiderato , 0 );
+    }
+
+    private  void  CounterMovement ( float  x , float  y , Vector2  mag ) {
+        if ( ! grounded  ||  jumping ) return ;
+
+        // Rallenta lo scorrimento
+        se ( accovacciato ) {
+            rb . AddForce ( moveSpeed  *  Time.deltaTime * -rb.velocity.normalized  *  slideCounterMovement ) ; _ _ _ _ _ _  
+            ritorno ;
+        }
+
+        // Contromovimento
+        if ( Math . Abs ( mag . x ) >  soglia  &&  Math . Abs ( x ) <  0 . 05 f  || ( mag . x  <  - soglia  &&  x  >  0 ) || ( mag . x  >  soglia  &&  x  <  0 )) {
+            rb . AddForce ( orientamento moveSpeed  *  . transform.right * Time.deltaTime * -mag.x * counterMovement ) ; _ _ _ _ _ _      
+        }
+        if ( Math . Abs ( mag . y ) >  soglia  &&  Math . Abs ( y ) <  0 . 05 f  || ( mag . y  <  - soglia  &&  y  >  0 ) || ( mag . y  >  soglia  &&  y  <  0 ) )) {
+            rb . AddForce ( orientamento moveSpeed  *  . transform . forward * Time.deltaTime * -mag.y * counterMovement ) ; _ _ _ _      
+        }
+
+        // Limita la corsa in diagonale. Ciò causerà anche un punto fermo se si scivola velocemente e non si è accovacciati, quindi non è ottimale.
+        if ( Mathf . Sqrt (( Mathf . Pow ( rb . velocity . x , 2 ) +  Mathf . Pow ( rb . velocity . z , 2 ))) >  maxSpeed ​​) {
+            float  velocità di caduta  =  rb . velocità . si ;
+            Vettore3  n  =  rb . velocità . normalizzato  *  maxSpeed ​​;
+            rb . velocità  =  nuovo  Vettore3 ( n.x , velocità di caduta , n.z ) ; _
+        }
+    }
+
+    /// < riassunto >
+    /// Trova la velocità relativa a dove sta guardando il giocatore
+    /// Utile per il calcolo dei vettori relativi al movimento e alla limitazione del movimento
+    /// </ riassunto >
+    /// < ritorna ></ ritorna >
+    public  Vector2  FindVelRelativeToLook () {
+        float  lookAngle  =  orientamento . trasformare . eulero Angoli . si ;
+        float  moveAngle  =  Mathf . Atan2 ( rb . velocità . x , rb . velocità . z ) *  Mathf . Rad2° ;
+
+        float  u  =  Mathf . DeltaAngle ( lookAngle , moveAngle );
+        float  v  =  90  -  u ;
+
+         magnitudo  galleggiante =  rb . velocità . grandezza ;
+        float  yMag  =  magnitudo  *  Mathf . Cos ( u  *  Mathf . Deg2Rad );
+        float  xMag  =  magnitudo  *  Mathf . Cos ( v  *  Mathf . Deg2Rad );
+
+        restituisce  nuovo  Vector2 ( xMag , yMag );
+    }
+
+     bool  privato IsFloor ( Vector3  v ) {
+         angolo  flottante =  Vector3 . Angolo ( Vector3 . su , v );
+         angolo di  ritorno <  maxSlopeAngle ;
+    }
+
+    private  bool  cancellingGrounded ;
+
+    /// < riassunto >
+    /// Gestisce il rilevamento del terreno
+    /// </ riassunto >
+     void  privato OnCollisionStay ( Collision  altro ) {
+        // Assicurati che stiamo solo controllando i livelli calpestabili
+         strato  int =  altro . oggetto di gioco . strato ;
+        if ( cosaÈGround  != ( cosaÈGround  | ( 1  <<  layer ))) return ;
+
+        // Scorri ogni collisione in un aggiornamento della fisica
+        for ( int  i  =  0 ; i  <  altro . contactCount ; i ++ ) {
+            Vector3  normale  =  altro . contatti [ i ]. normale ;
+            // PIANO
+            if ( IsFloor ( normale )) {
+                grounded  =  vero ;
+                cancellingGrounded  =  false ;
+                normaleVettore  =  normale ;
+                CancelInvoke ( nameof ( StopGrounded ));
+            }
+        }
+
+        // Invoca ground/wall cancel, poiché non possiamo controllare le normali con CollisionExit
+         ritardo  flottante =  3 f ;
+        se ( ! cancellandoA terra ) {
+            cancellingGrounded  =  true ;
+            Invoke ( nameof ( StopGrounded ), Time . deltaTime  *  delay );
+        }
+    }
+
+    privato  void  StopGrounded () {
+        grounded  =  falso ;
+    }
+
+}
